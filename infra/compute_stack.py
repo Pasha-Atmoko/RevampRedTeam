@@ -61,7 +61,7 @@ class ComputeStack(Stack):
             scope_param.grant_read(f)
         report_bucket.grant_put(self.report_fn)
 
-        bedrock_policy = iam.PolicyStatement(actions=["bedrock:InvokeModel"],
-                                             resources=["*"])
+        bedrock_policy = iam.PolicyStatement(
+            actions=["bedrock:InvokeModel", "bedrock:Converse"], resources=["*"])
         for f in (self.profile_fn, self.execute_fn):
             f.add_to_role_policy(bedrock_policy)

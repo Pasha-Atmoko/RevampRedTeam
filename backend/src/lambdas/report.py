@@ -36,5 +36,7 @@ def handler(event, context):
                        Body=_markdown(job).encode("utf-8"),
                        ContentType="text/markdown")
         report_url = f"s3://{REPORT_BUCKET}/{key}"
-    store.update_job(scan_id, status="DONE", report_url=report_url)
-    return {**event, "status": "DONE", "report_url": report_url}
+    current = job.get("status") if job else None
+    final = current if current in ("FAILED", "REJECTED") else "DONE"
+    store.update_job(scan_id, status=final, report_url=report_url)
+    return {**event, "status": final, "report_url": report_url}

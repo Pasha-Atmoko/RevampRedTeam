@@ -33,9 +33,11 @@ class OrchestrationStack(Stack):
         validate = state("ValidateScope", compute.validate_fn)
         profile = state("ProfileAndScenario", compute.profile_fn)
         execute = state("ExecuteAttack", compute.execute_fn)
-        report = state("Report", compute.report_fn)
+        report = tasks.LambdaInvoke(self, "Report", lambda_function=compute.report_fn,
+                                    payload_response_only=True)
 
         definition = validate.next(profile).next(execute).next(report)
+        mark_failed.next(report)
         self.state_machine = sfn.StateMachine(
             self, "Tier2StateMachine",
             definition_body=sfn.DefinitionBody.from_chainable(definition),

@@ -14,4 +14,4 @@ def handler(event, context):
         job = store.get_scan(scan_id)
         if job and job.get("status") != "REJECTED":
             store.update_job(scan_id, status="FAILED", error=str(cause)[:1000])
-    return {"status": "FAILED"}
+    return {**event, "status": "FAILED"}
