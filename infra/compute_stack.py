@@ -35,7 +35,6 @@ class ComputeStack(Stack):
                     subnet_type=ec2.SubnetType.PRIVATE_WITH_EGRESS) if in_vpc else None,
                 security_groups=[egress_sg] if in_vpc else None)
 
-        self.submit_fn = fn("SubmitScan", "lambdas.submit_scan.handler", timeout=30)
         self.get_fn = fn("GetScan", "lambdas.get_scan.handler", timeout=30)
         self.validate_fn = fn("ValidateScope", "lambdas.validate_scope.handler")
         self.profile_fn = fn("ProfileAndScenario",
@@ -46,8 +45,16 @@ class ComputeStack(Stack):
         self.report_fn = fn("Report", "lambdas.report.handler")
         self.failed_fn = fn("MarkFailed", "lambdas.mark_failed.handler", timeout=30)
 
+        # Expose common_env and helpers for OrchestrationStack to create submit_fn.
+        self.code = code
+        self.layer = layer
+        self.common_env = common_env
+        self.vpc = vpc
+        self.egress_sg = egress_sg
+        self.scans_table = scans_table
+
         # Least-privilege grants.
-        for f in (self.submit_fn, self.get_fn, self.validate_fn, self.profile_fn,
+        for f in (self.get_fn, self.validate_fn, self.profile_fn,
                   self.execute_fn, self.report_fn, self.failed_fn):
             scans_table.grant_read_write_data(f)
         for f in (self.validate_fn, self.execute_fn):

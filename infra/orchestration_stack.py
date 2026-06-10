@@ -6,6 +6,7 @@ Any state failure is caught -> MarkFailed.
 """
 from aws_cdk import CfnOutput, Duration, Stack
 from aws_cdk import aws_apigateway as apigw
+from aws_cdk import aws_lambda as lambda_
 from aws_cdk import aws_stepfunctions as sfn
 from aws_cdk import aws_stepfunctions_tasks as tasks
 from constructs import Construct
@@ -40,9 +41,25 @@ class OrchestrationStack(Stack):
             definition_body=sfn.DefinitionBody.from_chainable(definition),
             timeout=Duration.minutes(30))
 
-        compute.submit_fn.add_environment("STATE_MACHINE_ARN",
-                                          self.state_machine.state_machine_arn)
-        self.state_machine.grant_start_execution(compute.submit_fn)
+        # SubmitScan is created here (not ComputeStack) to avoid a cross-stack cycle:
+        # OrchestrationStack needs the state machine ARN for the Lambda env var, and
+        # ComputeStack already depends on OrchestrationStack via LambdaInvoke.
+        # Each stack needs its own Code/LayerVersion instances (CDK asset rule).
+        submit_env = {**compute.common_env,
+                      "STATE_MACHINE_ARN": self.state_machine.state_machine_arn}
+        submit_layer = lambda_.LayerVersion(
+            self, "SubmitDepsLayer", code=lambda_.Code.from_asset("build/layer"),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            description="httpx, boto3 (submit)")
+        self.submit_fn = lambda_.Function(
+            self, "SubmitScan", runtime=lambda_.Runtime.PYTHON_3_12,
+            handler="lambdas.submit_scan.handler",
+            code=lambda_.Code.from_asset("backend/src"),
+            layers=[submit_layer],
+            timeout=Duration.seconds(30), memory_size=256,
+            environment=submit_env)
+        compute.scans_table.grant_read_write_data(self.submit_fn)
+        self.state_machine.grant_start_execution(self.submit_fn)
 
         # REST API with API key + usage plan + CORS preflight.
         api = apigw.RestApi(
@@ -53,7 +70,7 @@ class OrchestrationStack(Stack):
                 allow_headers=["content-type", "x-api-key"]))
 
         scans = api.root.add_resource("scan")
-        scans.add_method("POST", apigw.LambdaIntegration(compute.submit_fn),
+        scans.add_method("POST", apigw.LambdaIntegration(self.submit_fn),
                          api_key_required=True)
         one = scans.add_resource("{id}")
         one.add_method("GET", apigw.LambdaIntegration(compute.get_fn),
