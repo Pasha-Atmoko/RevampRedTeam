@@ -10,3 +10,4 @@ cdk-outputs.json
 next-env.d.ts
 *.tsbuildinfo
 .vercel/
+deploy.log
