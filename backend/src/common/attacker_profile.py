@@ -116,7 +116,7 @@ def generate(rng: random.Random | None = None) -> dict:
     tactics = rng.sample(MITRE_TACTICS, k=rng.randint(3, 5))
 
     return {
-        "id": uuid.uuid4().hex[:12],
+        "id": f"{rng.getrandbits(48):012x}",
         "alias": _alias(rng),
         "archetype": arch["name"],
         "archetype_id": arch["id"],
