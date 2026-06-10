@@ -9,3 +9,4 @@ node_modules/
 cdk-outputs.json
 next-env.d.ts
 *.tsbuildinfo
+.vercel/
