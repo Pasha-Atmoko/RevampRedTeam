@@ -63,6 +63,37 @@ def test_loop_executes_requests_and_records_findings():
     assert recorded and recorded[0].title == "Weak login"  # streamed via callback
 
 
+def test_discovery_probes_endpoint_wordlist():
+    """The deterministic discovery pass should probe many common paths (not just
+    the seed) before the reasoning loop, and feed them to the model."""
+    created = {}
+
+    class RecordingClient(FakeClient):
+        def __init__(self, *a, **k):
+            super().__init__(*a, **k)
+            created["client"] = self
+
+    seen_prompt = {}
+
+    def immediate_done(messages, system, tools, model_id=None, max_tokens=1024):
+        seen_prompt["system"] = system
+        return {"stop": "end", "blocks": [{"type": "text", "text": "DONE"}]}
+
+    findings = asyncio.run(llm_agent.run(
+        scan_id="s1", target="http://1.2.3.4:8080", endpoint="/login",
+        profile={"alias": "a", "archetype": "b", "style": "c", "skill_level": "d",
+                 "preferred_ttps": [], "aggressiveness": 0.5, "stealth": 0.5},
+        scenario="x", scope=["1.2.3.4:8080"],
+        converse_fn=immediate_done, client_factory=RecordingClient))
+
+    urls = [u for (_m, u) in created["client"].calls]
+    assert any(u.endswith("/admin") for u in urls)
+    assert any(u.endswith("/api/users") for u in urls)
+    assert len(urls) >= 10                       # wordlist was probed
+    assert "/admin -> 200" in seen_prompt["system"]   # discovered list fed to model
+    assert findings == []
+
+
 def test_loop_blocks_out_of_scope():
     import pytest
     from common.scope_guard import ScopeError
