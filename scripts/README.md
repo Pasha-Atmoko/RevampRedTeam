@@ -7,6 +7,7 @@ managing the **scope allowlist** (which targets a scan is allowed to hit) and
 | Script | Shell | What it does |
 |--------|-------|--------------|
 | [`register_target.sh`](#register_targetsh) | bash | Add / remove / list a single `host:port` in the scope allowlist (append + dedupe) |
+| [`register_target.bat`](#register_targetsh) | cmd.exe | Windows equivalent of `register_target.sh` (identical args/behavior) |
 | [`set_scope.ps1`](#set_scopeps1) | PowerShell | **Replace** the entire scope allowlist in one call |
 | [`build_layer.ps1`](#build_layerps1) | PowerShell | Build the Lambda dependency layer (`build/layer/python`) before `cdk deploy` |
 
@@ -43,6 +44,13 @@ An entry may be:
 Add (default), remove, or list a single `host:port` in the allowlist. Unlike
 `set_scope.ps1`, it **appends and de-duplicates** instead of overwriting, so you
 can register targets incrementally.
+
+> **Windows:** a `cmd.exe` port, `register_target.bat`, ships alongside it with
+> the **same arguments and behavior**. Use whichever fits your shell:
+> ```bat
+> scripts\register_target.bat 54.84.126.64 80
+> scripts\register_target.bat --list
+> ```
 
 ### Usage
 ```bash
