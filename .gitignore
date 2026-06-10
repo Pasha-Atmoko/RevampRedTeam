@@ -7,3 +7,5 @@ node_modules/
 .next/
 .env.local
 cdk-outputs.json
+next-env.d.ts
+*.tsbuildinfo
