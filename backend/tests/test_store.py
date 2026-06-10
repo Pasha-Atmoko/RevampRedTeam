@@ -49,3 +49,19 @@ def test_update_status_and_findings(table):
     assert job["scenario"] == "# s"
     assert len(job["findings"]) == 1
     assert job["findings"][0]["title"] == "t"
+
+
+def test_profile_with_floats_roundtrips(table):
+    """Regression: attacker profiles contain floats (stealth/aggressiveness);
+    DynamoDB rejects float, so store must convert to Decimal and back."""
+    store = table
+    store.create_job("s3", {"ip": "1.2.3.4", "port": 80, "endpoint": "/",
+                            "url": "http://1.2.3.4:80"})
+    profile = {"alias": "ghost01", "stealth": 0.8, "aggressiveness": 0.3,
+               "preferred_ttps": ["a", "b"], "nested": {"score": 0.55}}
+    store.update_job("s3", status="RUNNING", profile=profile)
+    job = store.get_scan("s3")
+    assert job["profile"]["stealth"] == 0.8          # comes back as float, not Decimal/str
+    assert job["profile"]["aggressiveness"] == 0.3
+    assert job["profile"]["nested"]["score"] == 0.55
+    assert job["target"]["port"] == 80               # integral Decimal -> int

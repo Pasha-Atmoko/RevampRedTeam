@@ -4,11 +4,17 @@
 Layout:
   job item     pk=SCAN#<id> sk=META   (status, target, profile, scenario, ...)
   finding item pk=SCAN#<id> sk=FIND#<finding_id>
+
+DynamoDB does not accept Python ``float`` (e.g. the attacker profile's
+``stealth``/``aggressiveness``) — it requires ``Decimal``. ``_to_dynamo``
+converts floats to Decimal on the way in, and ``_from_dynamo`` converts Decimals
+back to int/float on the way out so the API returns plain JSON numbers.
 """
 from __future__ import annotations
 
 import os
 import time
+from decimal import Decimal
 from functools import lru_cache
 
 import boto3
@@ -22,19 +28,41 @@ def _table():
     return boto3.resource("dynamodb").Table(TABLE)
 
 
+def _to_dynamo(obj):
+    """Recursively convert floats to Decimal for DynamoDB writes."""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    if isinstance(obj, dict):
+        return {k: _to_dynamo(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_to_dynamo(v) for v in obj]
+    return obj
+
+
+def _from_dynamo(obj):
+    """Recursively convert DynamoDB Decimals back to int/float for JSON."""
+    if isinstance(obj, Decimal):
+        return int(obj) if obj == obj.to_integral_value() else float(obj)
+    if isinstance(obj, dict):
+        return {k: _from_dynamo(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_from_dynamo(v) for v in obj]
+    return obj
+
+
 def create_job(scan_id: str, target: dict) -> None:
-    _table().put_item(Item={
+    _table().put_item(Item=_to_dynamo({
         "pk": f"SCAN#{scan_id}", "sk": "META", "scan_id": scan_id,
         "status": "QUEUED", "target": target, "profile": None, "scenario": None,
         "engine": None, "report_url": None, "error": None,
-        "created_at": int(time.time())})
+        "created_at": int(time.time())}))
 
 
 def update_job(scan_id: str, **fields) -> None:
     if not fields:
         return
     names = {f"#{k}": k for k in fields}
-    values = {f":{k}": v for k, v in fields.items()}
+    values = {f":{k}": _to_dynamo(v) for k, v in fields.items()}
     expr = "SET " + ", ".join(f"#{k} = :{k}" for k in fields)
     _table().update_item(Key={"pk": f"SCAN#{scan_id}", "sk": "META"},
                          UpdateExpression=expr,
@@ -44,7 +72,7 @@ def update_job(scan_id: str, **fields) -> None:
 
 def put_finding(scan_id: str, finding: dict) -> None:
     item = {"pk": f"SCAN#{scan_id}", "sk": f"FIND#{finding['finding_id']}", **finding}
-    _table().put_item(Item=item)
+    _table().put_item(Item=_to_dynamo(item))
 
 
 def get_scan(scan_id: str) -> dict | None:
@@ -57,7 +85,7 @@ def get_scan(scan_id: str) -> dict | None:
     findings.sort(key=lambda f: _SEV_RANK.get(f["severity"], 0), reverse=True)
     out = {k: v for k, v in meta.items() if k not in ("pk", "sk")}
     out["findings"] = findings
-    return out
+    return _from_dynamo(out)
 
 
 _SEV_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}
