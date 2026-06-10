@@ -31,12 +31,26 @@ class OrchestrationStack(Stack):
             return t
 
         validate = state("ValidateScope", compute.validate_fn)
-        profile = state("ProfileAndScenario", compute.profile_fn)
-        execute = state("ExecuteAttack", compute.execute_fn)
+        roster = state("MakeRoster", compute.roster_fn)
+
+        # Fan out one agent per roster index. item_selector shapes each iteration's
+        # input to {scan_id, target, index}; each agent catches its own errors so a
+        # single agent failure does not fail the Map.
+        swarm_agent = tasks.LambdaInvoke(self, "SwarmAgent",
+                                         lambda_function=compute.swarm_fn,
+                                         payload_response_only=True)
+        swarm = sfn.Map(self, "Swarm", items_path="$.roster", max_concurrency=3,
+                        item_selector={"scan_id.$": "$.scan_id",
+                                       "target.$": "$.target",
+                                       "index.$": "$$.Map.Item.Value"},
+                        result_path="$.swarmResults")
+        swarm.item_processor(swarm_agent)
+        swarm.add_catch(mark_failed, errors=["States.ALL"], result_path="$.error")
+
         report = tasks.LambdaInvoke(self, "Report", lambda_function=compute.report_fn,
                                     payload_response_only=True)
 
-        definition = validate.next(profile).next(execute).next(report)
+        definition = validate.next(roster).next(swarm).next(report)
         mark_failed.next(report)
         self.state_machine = sfn.StateMachine(
             self, "Tier2StateMachine",

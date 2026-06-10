@@ -49,6 +49,14 @@ def _validate(data: dict) -> str | None:
     scheme = data.get("scheme")
     if scheme is not None and str(scheme).lower() not in ("http", "https"):
         return "Field 'scheme' must be 'http' or 'https'."
+    agents = data.get("agents")
+    if agents is not None:
+        try:
+            a = int(agents)
+        except (TypeError, ValueError):
+            return "Field 'agents' must be an integer."
+        if not (1 <= a <= 8):
+            return "Field 'agents' must be between 1 and 8."
     return None
 
 
@@ -66,8 +74,10 @@ def handler(event, context):
     target = Target.from_parts(data["ip"], data["port"], data.get("endpoint", "/"),
                                scheme=data.get("scheme"))
     scan_id = uuid.uuid4().hex
+    agents = int(data.get("agents") or 5)
     store.create_job(scan_id, target.to_dict())
     _sfn.start_execution(stateMachineArn=STATE_MACHINE_ARN, name=scan_id,
                          input=json.dumps({"scan_id": scan_id,
-                                           "target": target.to_dict()}))
+                                           "target": target.to_dict(),
+                                           "agents": agents}))
     return _resp(202, {"scan_id": scan_id, "status": "QUEUED"})

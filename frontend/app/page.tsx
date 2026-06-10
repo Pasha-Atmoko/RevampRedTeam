@@ -17,7 +17,7 @@ export default function Home() {
 
   useEffect(() => () => clearInterval(timer.current), []);
 
-  async function launch(input: { ip: string; port: number; endpoint: string }) {
+  async function launch(input: { ip: string; port: number; endpoint: string; agents: number }) {
     setError(null); setScan(null); setBusy(true);
     try {
       const { scan_id } = await submitScan(input);
@@ -48,8 +48,30 @@ export default function Home() {
             {scan.report_url ? ` · report: ${scan.report_url}` : ""}
             {scan.error ? ` · error: ${scan.error}` : ""}
           </div>
-          {scan.profile && <ProfileCard p={scan.profile} />}
-          {scan.scenario && <ScenarioView md={scan.scenario} engine={scan.engine} />}
+          {scan.agents && scan.agents.length > 0 ? (
+            <div className="card">
+              <h3>Attacker swarm ({scan.agents.length})</h3>
+              {scan.agents.map((a) => (
+                <div key={a.index} style={{ borderTop: "1px solid #16203a", paddingTop: 10, marginTop: 10 }}>
+                  {a.profile ? <ProfileCard p={a.profile} /> : null}
+                  {a.error ? <div className="err">agent #{a.index} failed: {a.error}</div> : null}
+                  {a.scenario ? (
+                    <details>
+                      <summary style={{ cursor: "pointer", color: "#94a3b8", fontSize: 12 }}>
+                        Scenario — agent #{a.index} {a.engine ? `(${a.engine})` : ""}
+                      </summary>
+                      <ScenarioView md={a.scenario} engine={a.engine} />
+                    </details>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <>
+              {scan.profile && <ProfileCard p={scan.profile} />}
+              {scan.scenario && <ScenarioView md={scan.scenario} engine={scan.engine} />}
+            </>
+          )}
           <FindingsList findings={scan.findings || []} />
         </>
       )}

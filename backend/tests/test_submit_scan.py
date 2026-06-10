@@ -37,6 +37,17 @@ def test_validate_accepts_https_scheme():
                                   "authorized": True, "scheme": "https"}) is None
 
 
+def test_validate_rejects_bad_agents():
+    err = submit_scan._validate({"ip": "1.2.3.4", "port": 80, "endpoint": "/",
+                                 "authorized": True, "agents": 99})
+    assert err is not None and "agents" in err.lower()
+
+
+def test_validate_accepts_agents():
+    assert submit_scan._validate({"ip": "1.2.3.4", "port": 80, "endpoint": "/",
+                                  "authorized": True, "agents": 5}) is None
+
+
 def test_response_helper_shapes_cors():
     r = submit_scan._resp(202, {"scan_id": "x"})
     assert r["statusCode"] == 202

@@ -75,6 +75,14 @@ def put_finding(scan_id: str, finding: dict) -> None:
     _table().put_item(Item=_to_dynamo(item))
 
 
+def put_agent(scan_id: str, index: int, profile: dict, scenario: str,
+              engine: str, error: str | None = None) -> None:
+    """Record one swarm agent's persona + scenario under the scan."""
+    _table().put_item(Item=_to_dynamo({
+        "pk": f"SCAN#{scan_id}", "sk": f"AGENT#{int(index):02d}", "index": int(index),
+        "profile": profile, "scenario": scenario, "engine": engine, "error": error}))
+
+
 def get_scan(scan_id: str) -> dict | None:
     resp = _table().query(KeyConditionExpression=Key("pk").eq(f"SCAN#{scan_id}"))
     items = resp.get("Items", [])
@@ -83,9 +91,26 @@ def get_scan(scan_id: str) -> dict | None:
         return None
     findings = [_finding_view(i) for i in items if i["sk"].startswith("FIND#")]
     findings.sort(key=lambda f: _SEV_RANK.get(f["severity"], 0), reverse=True)
+    findings = _dedupe(findings)
+    agents = [_finding_view(i) for i in items if i["sk"].startswith("AGENT#")]
+    agents.sort(key=lambda a: a.get("index", 0))
     out = {k: v for k, v in meta.items() if k not in ("pk", "sk")}
     out["findings"] = findings
+    out["agents"] = agents
     return _from_dynamo(out)
+
+
+def _dedupe(findings: list[dict]) -> list[dict]:
+    """Collapse identical findings reported by multiple swarm agents."""
+    seen, out = set(), []
+    for f in findings:
+        key = (str(f.get("title", "")).strip().lower(), f.get("endpoint"),
+               f.get("severity"))
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(f)
+    return out
 
 
 _SEV_RANK = {"critical": 4, "high": 3, "medium": 2, "low": 1, "info": 0}

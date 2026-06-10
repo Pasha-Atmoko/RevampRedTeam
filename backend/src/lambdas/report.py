@@ -14,9 +14,22 @@ _s3 = boto3.client("s3")
 
 def _markdown(job: dict) -> str:
     t = job["target"]
+    agents = job.get("agents") or []
     lines = [f"# Tier2 Pentest Report - {t['url']}{t['endpoint']}", "",
-             f"Engine: {job.get('engine')}  |  Findings: {len(job.get('findings', []))}",
-             "", "## Scenario", job.get("scenario") or "(none)", "", "## Findings"]
+             f"Agents: {len(agents) or 1}  |  Findings (deduped): "
+             f"{len(job.get('findings', []))}", ""]
+    if agents:
+        lines += ["## Attacker Swarm"]
+        for a in agents:
+            p = a.get("profile") or {}
+            tag = " (failed)" if a.get("error") else ""
+            lines.append(f"- **#{a.get('index')}** {p.get('archetype', 'agent')} "
+                         f"({p.get('alias', '?')}) — {p.get('skill_level', '')}{tag}")
+        lines += ["", "## Scenario (agent #0)",
+                  (agents[0].get("scenario") or "(none)"), ""]
+    else:
+        lines += ["## Scenario", job.get("scenario") or "(none)", ""]
+    lines += ["## Findings"]
     for f in job.get("findings", []):
         lines += [f"### [{f['severity'].upper()}] {f['title']}",
                   f"- attack_method: {f.get('attack_method','')}",

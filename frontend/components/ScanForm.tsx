@@ -9,12 +9,13 @@ const selectStyle: React.CSSProperties = {
 };
 
 export default function ScanForm({ onSubmit, busy }: {
-  onSubmit: (v: { ip: string; port: number; endpoint: string }) => void;
+  onSubmit: (v: { ip: string; port: number; endpoint: string; agents: number }) => void;
   busy: boolean;
 }) {
   const [ip, setIp] = useState("");
   const [port, setPort] = useState(8080);
   const [endpoint, setEndpoint] = useState("/login");
+  const [agents, setAgents] = useState(5);
   const [authorized, setAuthorized] = useState(false);
   const [targets, setTargets] = useState<string[]>([]);
   const [selected, setSelected] = useState(""); // "" = custom / manual
@@ -74,17 +75,26 @@ export default function ScanForm({ onSubmit, busy }: {
                  onChange={(e) => setPort(parseInt(e.target.value || "0", 10))} />
         </div>
       </div>
-      <label>Endpoint</label>
-      <input type="text" value={endpoint}
-             onChange={(e) => setEndpoint(e.target.value)} placeholder="/login" />
+      <div className="row" style={{ marginTop: 12 }}>
+        <div style={{ flex: 2 }}>
+          <label>Endpoint</label>
+          <input type="text" value={endpoint}
+                 onChange={(e) => setEndpoint(e.target.value)} placeholder="/login" />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label>Swarm agents (1–8)</label>
+          <input type="number" min={1} max={8} value={agents}
+                 onChange={(e) => setAgents(Math.max(1, Math.min(8, parseInt(e.target.value || "1", 10))))} />
+        </div>
+      </div>
       <label style={{ marginTop: 14 }}>
         <input type="checkbox" checked={authorized}
                onChange={(e) => setAuthorized(e.target.checked)} />{" "}
         I confirm I am authorized to test this target.
       </label>
       <button className="primary" disabled={!authorized || !ip || busy}
-              onClick={() => onSubmit({ ip, port, endpoint })}>
-        {busy ? "Running…" : "Launch scan"}
+              onClick={() => onSubmit({ ip, port, endpoint, agents })}>
+        {busy ? "Running…" : `Launch ${agents} agent${agents > 1 ? "s" : ""}`}
       </button>
     </div>
   );

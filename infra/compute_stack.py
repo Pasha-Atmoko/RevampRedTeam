@@ -38,11 +38,11 @@ class ComputeStack(Stack):
         self.get_fn = fn("GetScan", "lambdas.get_scan.handler", timeout=30)
         self.scope_fn = fn("GetScope", "lambdas.get_scope.handler", timeout=30)
         self.validate_fn = fn("ValidateScope", "lambdas.validate_scope.handler")
-        self.profile_fn = fn("ProfileAndScenario",
-                             "lambdas.profile_and_scenario.handler",
-                             timeout=120, memory=512)
-        self.execute_fn = fn("ExecuteAttack", "lambdas.execute_attack.handler",
-                             in_vpc=True, timeout=900, memory=512)
+        self.roster_fn = fn("MakeRoster", "lambdas.make_roster.handler", timeout=30)
+        # One swarm agent per Map iteration: random profile -> Opus scenario ->
+        # execute loop. In VPC for target egress + Bedrock; long timeout for the loop.
+        self.swarm_fn = fn("SwarmAgent", "lambdas.swarm_agent.handler",
+                           in_vpc=True, timeout=900, memory=512)
         self.report_fn = fn("Report", "lambdas.report.handler")
         self.failed_fn = fn("MarkFailed", "lambdas.mark_failed.handler", timeout=30)
 
@@ -55,14 +55,13 @@ class ComputeStack(Stack):
         self.scans_table = scans_table
 
         # Least-privilege grants.
-        for f in (self.get_fn, self.validate_fn, self.profile_fn,
-                  self.execute_fn, self.report_fn, self.failed_fn):
+        for f in (self.get_fn, self.validate_fn, self.roster_fn,
+                  self.swarm_fn, self.report_fn, self.failed_fn):
             scans_table.grant_read_write_data(f)
-        for f in (self.validate_fn, self.execute_fn, self.scope_fn):
+        for f in (self.validate_fn, self.swarm_fn, self.scope_fn):
             scope_param.grant_read(f)
         report_bucket.grant_put(self.report_fn)
 
         bedrock_policy = iam.PolicyStatement(
             actions=["bedrock:InvokeModel", "bedrock:Converse"], resources=["*"])
-        for f in (self.profile_fn, self.execute_fn):
-            f.add_to_role_policy(bedrock_policy)
+        self.swarm_fn.add_to_role_policy(bedrock_policy)

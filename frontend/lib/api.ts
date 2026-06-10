@@ -7,10 +7,15 @@ export type Finding = {
   poc?: string; remediation?: string; attack_method?: string; persona?: string;
 };
 export type Profile = Record<string, any>;
+export type AgentInfo = {
+  index: number; profile?: Profile | null; scenario?: string | null;
+  engine?: string | null; error?: string | null;
+};
 export type Scan = {
   scan_id: string; status: string;
   target?: { ip: string; port: number; endpoint: string; url: string };
   profile?: Profile | null; scenario?: string | null; engine?: string | null;
+  agents?: AgentInfo[]; agent_count?: number;
   report_url?: string | null; findings?: Finding[]; error?: string | null;
 };
 
@@ -19,7 +24,7 @@ function headers() {
 }
 
 export async function submitScan(input: {
-  ip: string; port: number; endpoint: string;
+  ip: string; port: number; endpoint: string; agents?: number;
 }): Promise<{ scan_id: string }> {
   const res = await fetch(`${BASE}/scan`, {
     method: "POST", headers: headers(),
