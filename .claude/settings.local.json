@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/green/pentest-swarm/**)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Read(//c/Users/green/.claude/plugins/**)",
+      "Bash(git --version)",
+      "Bash(rm -rf /tmp/superpowers)",
+      "Bash(git clone *)",
+      "Read(//c/Users/green/AppData/Local/Temp/superpowers/**)",
+      "Bash(mkdir -p \"C:/Users/green/.claude/skills\")",
+      "Bash(cp -r \"C:/Users/green/AppData/Local/Temp/superpowers/skills/.\" \"C:/Users/green/.claude/skills/\")"
+    ]
+  }
+}
