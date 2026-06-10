@@ -46,6 +46,9 @@ def _validate(data: dict) -> str | None:
     ep = str(data.get("endpoint", "/"))
     if not ep.startswith("/"):
         return "Field 'endpoint' must start with '/'."
+    scheme = data.get("scheme")
+    if scheme is not None and str(scheme).lower() not in ("http", "https"):
+        return "Field 'scheme' must be 'http' or 'https'."
     return None
 
 
@@ -60,7 +63,8 @@ def handler(event, context):
     if err:
         return _resp(400, {"error": err})
 
-    target = Target.from_parts(data["ip"], data["port"], data.get("endpoint", "/"))
+    target = Target.from_parts(data["ip"], data["port"], data.get("endpoint", "/"),
+                               scheme=data.get("scheme"))
     scan_id = uuid.uuid4().hex
     store.create_job(scan_id, target.to_dict())
     _sfn.start_execution(stateMachineArn=STATE_MACHINE_ARN, name=scan_id,

@@ -18,3 +18,15 @@ def test_target_from_parts_builds_url():
     t = Target.from_parts("1.2.3.4", 8080, "/login")
     assert t.url == "http://1.2.3.4:8080"
     assert t.endpoint == "/login"
+
+
+def test_target_infers_https_on_tls_ports():
+    t = Target.from_parts("api.cashlo.id", 443, "/login")
+    assert t.scheme == "https"
+    assert t.url == "https://api.cashlo.id:443"
+    assert Target.from_parts("h", 8443, "/").scheme == "https"
+
+
+def test_target_explicit_scheme_overrides_port_inference():
+    assert Target.from_parts("1.2.3.4", 8080, "/", scheme="https").url == "https://1.2.3.4:8080"
+    assert Target.from_parts("1.2.3.4", 443, "/", scheme="http").url == "http://1.2.3.4:443"

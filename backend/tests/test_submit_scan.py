@@ -26,6 +26,17 @@ def test_validate_accepts_good_input():
                                   "endpoint": "/login", "authorized": True}) is None
 
 
+def test_validate_rejects_bad_scheme():
+    err = submit_scan._validate({"ip": "1.2.3.4", "port": 443, "endpoint": "/",
+                                 "authorized": True, "scheme": "ftp"})
+    assert err is not None and "scheme" in err.lower()
+
+
+def test_validate_accepts_https_scheme():
+    assert submit_scan._validate({"ip": "1.2.3.4", "port": 443, "endpoint": "/",
+                                  "authorized": True, "scheme": "https"}) is None
+
+
 def test_response_helper_shapes_cors():
     r = submit_scan._resp(202, {"scan_id": "x"})
     assert r["statusCode"] == 202

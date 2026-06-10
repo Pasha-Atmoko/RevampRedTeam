@@ -23,18 +23,24 @@ class Target:
     ip: str
     port: int
     endpoint: str
+    scheme: str = "http"
 
     @classmethod
-    def from_parts(cls, ip: str, port: int, endpoint: str) -> "Target":
+    def from_parts(cls, ip: str, port: int, endpoint: str,
+                   scheme: str | None = None) -> "Target":
         ep = endpoint if endpoint.startswith("/") else "/" + endpoint
-        return cls(ip=ip, port=int(port), endpoint=ep)
+        port = int(port)
+        # Explicit scheme wins; otherwise infer https for the common TLS ports.
+        scheme = (scheme or "").lower() or ("https" if port in (443, 8443) else "http")
+        return cls(ip=ip, port=port, endpoint=ep, scheme=scheme)
 
     @property
     def url(self) -> str:
-        return f"http://{self.ip}:{self.port}"
+        return f"{self.scheme}://{self.ip}:{self.port}"
 
     def to_dict(self) -> dict[str, Any]:
-        return {"ip": self.ip, "port": self.port, "endpoint": self.endpoint, "url": self.url}
+        return {"ip": self.ip, "port": self.port, "endpoint": self.endpoint,
+                "scheme": self.scheme, "url": self.url}
 
 
 @dataclasses.dataclass
