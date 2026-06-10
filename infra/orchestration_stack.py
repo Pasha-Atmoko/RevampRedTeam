@@ -78,6 +78,11 @@ class OrchestrationStack(Stack):
         one.add_method("GET", apigw.LambdaIntegration(compute.get_fn),
                        api_key_required=True)
 
+        # GET /scope -> list the authorized target allowlist (for the FE dropdown)
+        scope_res = api.root.add_resource("scope")
+        scope_res.add_method("GET", apigw.LambdaIntegration(compute.scope_fn),
+                             api_key_required=True)
+
         key = api.add_api_key("Tier2Key", value=API_KEY_VALUE)
         plan = api.add_usage_plan("Tier2Plan",
                                   throttle=apigw.ThrottleSettings(rate_limit=5,

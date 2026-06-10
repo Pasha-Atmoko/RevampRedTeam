@@ -36,6 +36,7 @@ class ComputeStack(Stack):
                 security_groups=[egress_sg] if in_vpc else None)
 
         self.get_fn = fn("GetScan", "lambdas.get_scan.handler", timeout=30)
+        self.scope_fn = fn("GetScope", "lambdas.get_scope.handler", timeout=30)
         self.validate_fn = fn("ValidateScope", "lambdas.validate_scope.handler")
         self.profile_fn = fn("ProfileAndScenario",
                              "lambdas.profile_and_scenario.handler",
@@ -57,7 +58,7 @@ class ComputeStack(Stack):
         for f in (self.get_fn, self.validate_fn, self.profile_fn,
                   self.execute_fn, self.report_fn, self.failed_fn):
             scans_table.grant_read_write_data(f)
-        for f in (self.validate_fn, self.execute_fn):
+        for f in (self.validate_fn, self.execute_fn, self.scope_fn):
             scope_param.grant_read(f)
         report_bucket.grant_put(self.report_fn)
 

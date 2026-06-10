@@ -34,3 +34,9 @@ export async function getScan(id: string): Promise<Scan> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
+
+export async function getScope(): Promise<{ targets: string[] }> {
+  const res = await fetch(`${BASE}/scope`, { headers: headers() });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
