@@ -1,4 +1,4 @@
-# Tier2 — AI-Driven Pentest Scenario & Execution
+# SuperAI NEXT — AI-Driven Pentest Scenario & Execution
 
 2-tier app: a Next.js/Vercel frontend submits a target (IP, port, endpoint); an
 AWS backend generates a **random attacker profile**, uses **Bedrock + Claude
